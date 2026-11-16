@@ -17,7 +17,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreApiVersion
     _: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jint {
-    3
+    4
 }
 
 #[no_mangle]
@@ -25,7 +25,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreCapabiliti
     _: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jint {
-    31
+    63
 }
 
 #[no_mangle]
@@ -114,4 +114,28 @@ mod tests {
     fn api_v3() {
         assert_eq!(crate::mora_core_api_version(), 3);
     }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeSystemConfigOperation(
+    mut e: JNIEnv<'_>,
+    _: JClass<'_>,
+    config: JString<'_>,
+    operation: JString<'_>,
+    key: JString<'_>,
+    value: JString<'_>,
+    time: jlong,
+) -> jstring {
+    let (Some(config), Some(operation), Some(key), Some(value)) = (
+        read(&mut e, &config),
+        read(&mut e, &operation),
+        read(&mut e, &key),
+        read(&mut e, &value),
+    ) else {
+        return ptr::null_mut();
+    };
+    let out = crate::system_config::operate(&config, &operation, &key, &value, time);
+    e.new_string(out)
+        .map(|s| s.into_raw())
+        .unwrap_or(ptr::null_mut())
 }
