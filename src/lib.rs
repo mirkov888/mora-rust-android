@@ -4,21 +4,23 @@ pub mod jni_bridge;
 pub mod profile_store;
 pub mod profiles;
 pub mod security;
+pub mod system_config;
 
 pub const CAP_INTEGER_ARITHMETIC: u32 = 1;
 pub const CAP_PROFILE_LABELS: u32 = 2;
 pub const CAP_PROFILE_IDS: u32 = 4;
 pub const CAP_SAFE_TEXT: u32 = 8;
 pub const CAP_PROFILE_STORE: u32 = 16;
+pub const CAP_SYSTEM_CONFIG: u32 = 32;
 
 #[no_mangle]
 pub extern "C" fn mora_core_api_version() -> u32 {
-    3
+    4
 }
 
 #[no_mangle]
 pub extern "C" fn mora_core_capabilities() -> u32 {
-    31
+    63
 }
 
 #[no_mangle]
@@ -31,13 +33,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn version_three() {
-        assert_eq!(mora_core_api_version(), 3);
+    fn version_four() {
+        assert_eq!(mora_core_api_version(), 4);
     }
 
     #[test]
-    fn capabilities_v3() {
-        assert_eq!(mora_core_capabilities(), 31);
+    fn capabilities_v4() {
+        assert_eq!(mora_core_capabilities(), 63);
     }
 
     #[test]
