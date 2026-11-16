@@ -1,0 +1,18 @@
+[package]
+name = "mora_rust_android"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "A small Rust native core starter for Android"
+license = "MIT"
+
+[lib]
+name = "mora_rust_android"
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
