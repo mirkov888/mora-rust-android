@@ -108,14 +108,6 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeProfileOperati
         .unwrap_or(ptr::null_mut())
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn api_v4() {
-        assert_eq!(crate::mora_core_api_version(), 4);
-    }
-}
-
 #[no_mangle]
 pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeSystemConfigOperation(
     mut e: JNIEnv<'_>,
@@ -138,4 +130,12 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeSystemConfigOp
     e.new_string(out)
         .map(|s| s.into_raw())
         .unwrap_or(ptr::null_mut())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn api_v4() {
+        assert_eq!(crate::mora_core_api_version(), 4);
+    }
 }
