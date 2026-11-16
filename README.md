@@ -2,75 +2,72 @@
 
 An independent Rust native library intended to be called from Android Kotlin code through JNI.
 
-## Current scope
+## Current scope — Stage 3
 
-- Rust native library crate (cdylib + rlib)
-- C ABI smoke-test functions
-- JNI exports for API version and integer-add smoke tests
-- Kotlin bridge and JUnit instrumentation-test example in `android-example/`
-- A minimal installable Android demo app in `android-demo/`
-- Platform-independent profile-label and input validation helpers
-- GitHub Actions CI for tests, linting, Android native builds, and demo APK packaging
+- Rust native library crate (`cdylib` + `rlib`)
+- Versioned native API v2 and capability bitmask
+- JNI bridge with checked Java/Kotlin string conversion
+- Integer arithmetic with explicit wrapping behavior
+- Profile-label normalization and validation
+- Profile ID validation
+- Safe-text validation with caller-provided byte limits
+- Android demo app exercising all JNI features
+- GitHub Actions CI for Rust tests, linting, Android native builds, and APK packaging
 
 This repository is a native Rust core plus a separate demo Android app. It is not Mora Shield and does not replace or modify any existing application.
 
 ## Android ABIs
 
-- `arm64-v8a` (primary modern Android target)
+- `arm64-v8a`
 - `armeabi-v7a`
 - `x86_64`
 
+## Native API v2
+
+| API | Purpose |
+| --- | --- |
+| `mora_core_api_version()` | Returns API version 2 |
+| `mora_core_capabilities()` | Returns supported-feature bitmask |
+| `mora_add_i32(left, right)` | Adds signed 32-bit integers with wrapping semantics |
+
+Capability bits: `0x01` integer arithmetic, `0x02` profile-label helpers, `0x04` profile-ID validation, `0x08` safe-text validation.
+
+## Kotlin JNI methods
+
+- `nativeCoreApiVersion()`
+- `nativeCoreCapabilities()`
+- `nativeAdd(left, right)`
+- `nativeNormalizeProfileLabel(input)` — returns normalized text or null for invalid input
+- `nativeIsValidProfileId(input)`
+- `nativeIsSafeText(input, maxBytes)`
+
+JNI string conversion uses the `jni` crate and checked JNI calls. Conversion failures return safe failure values.
+
 ## Android demo app
 
-The `android-demo/` directory contains a minimal Kotlin Android application. It loads `libmora_rust_android.so` through JNI and provides a **Jalankan Rust JNI Test** button.
+The `android-demo/` app provides a **Jalankan Semua Rust Tests** button. The on-device smoke test checks API version, capability flags, integer addition, profile-label normalization, profile-ID validation, and safe-text validation.
 
-The test checks:
-- Rust native API version returns `1`
-- Rust integer addition returns `20 + 22 = 42`
+On each push to `main`, GitHub Actions runs formatting, Clippy and Rust tests; builds native libraries for all three ABIs; packages them into the demo; then uploads `app-debug.apk` as the `mora-rust-android-demo-apk` artifact.
 
-### Build output
+Open the repository Actions tab, select the latest successful Rust Android CI run, and download `mora-rust-android-demo-apk`. Extract the ZIP to obtain `app-debug.apk`.
 
-On each push to `main`, GitHub Actions:
-1. Runs Rust formatting, Clippy, and unit tests.
-2. Builds the Rust shared library for all three Android ABIs.
-3. Packages the libraries into the Android demo app.
-4. Builds and uploads `app-debug.apk` as the `mora-rust-android-demo-apk` workflow artifact.
-
-Open the repository's **Actions** tab, select the latest successful **Rust Android CI** run, then download the `mora-rust-android-demo-apk` artifact. Extract the ZIP to obtain `app-debug.apk`.
-
-Install on a connected Android device with ADB:
+Install with ADB:
 
 ```bash
 adb install -r app-debug.apk
 ```
 
-Open **Mora Rust Core Demo** and tap **Jalankan Rust JNI Test**. A successful result displays API v1 and `20 + 22 = 42`.
-
-## Kotlin/JNI integration in another app
-
-1. Build the native library for the ABI(s) supported by the Android app.
-2. Place `libmora_rust_android.so` in the matching `app/src/main/jniLibs/<abi>/` directory.
-3. Copy `android-example/NativeCore.kt` into the app's Kotlin source tree. Keep package name `com.mora.rustandroid`, or rename both the Kotlin package and JNI export symbols in `src/jni_bridge.rs` together.
-4. Call the bridge from Kotlin:
-
-```kotlin
-val version = NativeCore.nativeCoreApiVersion()
-val sum = NativeCore.nativeAdd(20, 22) // 42
-```
-
-5. Add `android-example/NativeCoreSmokeTest.kt` to the app's Android instrumented-test source set and run it on a device/emulator with a matching ABI.
+Open Mora Rust Core Demo and tap **Jalankan Semua Rust Tests**. A successful result displays API v2 and nine passing checks.
 
 ## Local Rust development
-
-Install Rust stable, Android SDK/NDK, and Cargo NDK, then run:
 
 ```bash
 cargo fmt --all -- --check
 cargo clippy --all-targets -- -D warnings
-cargo test
+cargo test --all-targets
 cargo ndk -t arm64-v8a -o ./jniLibs build --release
 ```
 
 ## Safety and scope
 
-Current helpers validate app-owned profile labels and input data. They do not spoof hardware identifiers, bypass Android security controls, or modify Play Integrity / hardware attestation.
+These helpers validate app-owned labels and text. They do not read, spoof, or modify hardware identifiers, bypass Android security controls, or modify Play Integrity / hardware attestation.
