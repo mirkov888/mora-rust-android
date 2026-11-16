@@ -111,8 +111,8 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeProfileOperati
 #[cfg(test)]
 mod tests {
     #[test]
-    fn api_v3() {
-        assert_eq!(crate::mora_core_api_version(), 3);
+    fn api_v4() {
+        assert_eq!(crate::mora_core_api_version(), 4);
     }
 }
 
