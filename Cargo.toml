@@ -1,6 +1,6 @@
 [package]
 name = "mora_rust_android"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.75"
 description = "A small Rust native core starter for Android"
@@ -9,6 +9,9 @@ license = "MIT"
 [lib]
 name = "mora_rust_android"
 crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+jni = "0.21"
 
 [profile.release]
 opt-level = 3
