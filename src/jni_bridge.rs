@@ -1,4 +1,5 @@
 //! JNI exports used by the Kotlin integration example.
+#![allow(non_snake_case)]
 //!
 //! JNI references are opaque pointers because these functions do not inspect
 //! the Java environment or manipulate Java objects. The argument and return
