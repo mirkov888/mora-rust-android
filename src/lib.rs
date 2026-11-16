@@ -15,7 +15,9 @@ pub const CAP_SAFE_TEXT: u32 = 1 << 3;
 
 /// Returns the native core API version.
 #[no_mangle]
-pub extern "C" fn mora_core_api_version() -> u32 { 2 }
+pub extern "C" fn mora_core_api_version() -> u32 {
+    2
+}
 
 /// Returns the bitmask of capabilities supported by this core.
 #[no_mangle]
@@ -25,21 +27,31 @@ pub extern "C" fn mora_core_capabilities() -> u32 {
 
 /// Adds two 32-bit integers using explicitly wrapping arithmetic.
 #[no_mangle]
-pub extern "C" fn mora_add_i32(left: i32, right: i32) -> i32 { left.wrapping_add(right) }
+pub extern "C" fn mora_add_i32(left: i32, right: i32) -> i32 {
+    left.wrapping_add(right)
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn exposes_api_version_two() { assert_eq!(mora_core_api_version(), 2); }
+    fn exposes_api_version_two() {
+        assert_eq!(mora_core_api_version(), 2);
+    }
 
     #[test]
-    fn exposes_all_v2_capabilities() { assert_eq!(mora_core_capabilities(), 0b1111); }
+    fn exposes_all_v2_capabilities() {
+        assert_eq!(mora_core_capabilities(), 0b1111);
+    }
 
     #[test]
-    fn adds_values() { assert_eq!(mora_add_i32(20, 22), 42); }
+    fn adds_values() {
+        assert_eq!(mora_add_i32(20, 22), 42);
+    }
 
     #[test]
-    fn addition_wraps_explicitly() { assert_eq!(mora_add_i32(i32::MAX, 1), i32::MIN); }
+    fn addition_wraps_explicitly() {
+        assert_eq!(mora_add_i32(i32::MAX, 1), i32::MIN);
+    }
 }
