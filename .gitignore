@@ -1,0 +1,7 @@
+/target/
+/dist/
+/jniLibs/
+*.so
+*.aar
+.idea/
+.DS_Store
