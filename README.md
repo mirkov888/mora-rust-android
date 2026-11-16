@@ -2,6 +2,16 @@
 
 Independent Rust native library with an Android Kotlin demo. This is not Mora Shield and does not modify any existing app.
 
+Independent Rust native library with an Android Kotlin demo. This is not Mora Shield and does not modify any existing app.
+
+## Stage 5
+- Native API v4 and capability bitmask `0x3f`.
+- Rust System Configuration Manager with typed validation and JSON operations (`get`, `set`, `reset`).
+- Supported keys: `log_level` (`error`, `warn`, `info`, `debug`), `network_mode` (`auto`, `wifi_only`, `offline`), `background_sync` (boolean), `cache_limit_mb` (64–4096), and `telemetry_enabled` (boolean, defaults off).
+- Android persists configuration in app-private `filesDir/system_config.json` and exposes controls in the demo UI.
+- Unknown keys, invalid values, malformed JSON, unsupported schema versions, and invalid timestamps are rejected.
+- No Android global settings, root operations, hardware identifier changes, or security bypasses.
+
 ## Stage 4
 - Native API v3 and capability bitmask.
 - Rust profile CRUD engine: create, list, update, delete.
