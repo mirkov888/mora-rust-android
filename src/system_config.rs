@@ -35,8 +35,7 @@ fn parse_config(input: &str) -> Result<SystemConfig, &'static str> {
     if input.trim().is_empty() {
         return Ok(SystemConfig::default());
     }
-    let config: SystemConfig =
-        serde_json::from_str(input).map_err(|_| "invalid_config_json")?;
+    let config: SystemConfig = serde_json::from_str(input).map_err(|_| "invalid_config_json")?;
     validate(&config)?;
     Ok(config)
 }
@@ -161,7 +160,9 @@ mod tests {
 
     #[test]
     fn rejects_cache_out_of_range() {
-        assert!(operate("", "set", "cache_limit_mb", "99999", 1).contains("cache_limit_out_of_range"));
+        assert!(
+            operate("", "set", "cache_limit_mb", "99999", 1).contains("cache_limit_out_of_range")
+        );
     }
 
     #[test]
