@@ -8,4 +8,5 @@ object NativeCore {
  @JvmStatic external fun nativeIsValidProfileId(input:String):Boolean
  @JvmStatic external fun nativeIsSafeText(input:String,maxBytes:Int):Boolean
  @JvmStatic external fun nativeProfileOperation(storeJson:String,operation:String,id:String,label:String,timestamp:Long):String
+ @JvmStatic external fun nativeSystemConfigOperation(configJson:String,operation:String,key:String,value:String,timestamp:Long):String
 }
