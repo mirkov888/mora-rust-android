@@ -39,7 +39,10 @@ struct MonitorStore {
 
 impl Default for MonitorStore {
     fn default() -> Self {
-        Self { schema_version: 1, snapshots: Vec::new() }
+        Self {
+            schema_version: 1,
+            snapshots: Vec::new(),
+        }
     }
 }
 
@@ -71,8 +74,16 @@ fn parse(input: &str) -> Result<MonitorStore, &'static str> {
 }
 
 fn summary(store: &MonitorStore) -> serde_json::Value {
-    let total_rx = store.snapshots.iter().filter_map(|s| s.rx_delta_bytes).fold(0_u64, u64::saturating_add);
-    let total_tx = store.snapshots.iter().filter_map(|s| s.tx_delta_bytes).fold(0_u64, u64::saturating_add);
+    let total_rx = store
+        .snapshots
+        .iter()
+        .filter_map(|s| s.rx_delta_bytes)
+        .fold(0_u64, u64::saturating_add);
+    let total_tx = store
+        .snapshots
+        .iter()
+        .filter_map(|s| s.tx_delta_bytes)
+        .fold(0_u64, u64::saturating_add);
     serde_json::json!({
         "samples": store.snapshots.len(),
         "total_rx_delta_bytes": total_rx,
@@ -104,17 +115,18 @@ pub fn operate(input: &str, operation: &str, snapshot_json: &str, timestamp: i64
                     return Err("invalid_network_state");
                 }
                 let previous = store.snapshots.last();
-                let rx_delta = previous.and_then(|old| {
-                    Some(sample.rx_bytes?.checked_sub(old.rx_bytes?)?)
-                });
-                let tx_delta = previous.and_then(|old| {
-                    Some(sample.tx_bytes?.checked_sub(old.tx_bytes?)?)
-                });
+                let rx_delta =
+                    previous.and_then(|old| sample.rx_bytes?.checked_sub(old.rx_bytes?));
+                let tx_delta =
+                    previous.and_then(|old| sample.tx_bytes?.checked_sub(old.tx_bytes?));
                 let counter_reset = previous.is_some_and(|old| {
                     matches!((old.rx_bytes, sample.rx_bytes), (Some(a), Some(b)) if b < a)
                         || matches!((old.tx_bytes, sample.tx_bytes), (Some(a), Some(b)) if b < a)
                 });
-                let id = previous.map_or(Ok(1), |old| old.id.checked_add(1).ok_or("snapshot_id_overflow"))?;
+                let id = match previous {
+                    Some(old) => old.id.checked_add(1).ok_or("snapshot_id_overflow")?,
+                    None => 1,
+                };
                 if store.snapshots.len() == MAX_SNAPSHOTS {
                     store.snapshots.remove(0);
                 }
@@ -165,7 +177,8 @@ mod tests {
             "connected": true,
             "validated": true,
             "metered": false
-        }).to_string()
+        })
+        .to_string()
     }
 
     #[test]
@@ -183,7 +196,12 @@ mod tests {
     #[test]
     fn calculates_counter_deltas() {
         let first = store(&operate("", "record", &sample(1000, 2000), 10));
-        let second = store(&operate(&serde_json::to_string(&first).unwrap(), "record", &sample(1300, 2600), 20));
+        let second = store(&operate(
+            &serde_json::to_string(&first).unwrap(),
+            "record",
+            &sample(1300, 2600),
+            20,
+        ));
         assert_eq!(second.snapshots[1].rx_delta_bytes, Some(300));
         assert_eq!(second.snapshots[1].tx_delta_bytes, Some(600));
     }
@@ -191,7 +209,12 @@ mod tests {
     #[test]
     fn detects_counter_reset() {
         let first = store(&operate("", "record", &sample(1000, 2000), 10));
-        let second = store(&operate(&serde_json::to_string(&first).unwrap(), "record", &sample(10, 20), 20));
+        let second = store(&operate(
+            &serde_json::to_string(&first).unwrap(),
+            "record",
+            &sample(10, 20),
+            20,
+        ));
         assert!(second.snapshots[1].counter_reset);
         assert_eq!(second.snapshots[1].rx_delta_bytes, None);
     }
@@ -211,7 +234,12 @@ mod tests {
     #[test]
     fn clear_removes_snapshots() {
         let first = store(&operate("", "record", &sample(1000, 2000), 10));
-        let cleared = store(&operate(&serde_json::to_string(&first).unwrap(), "clear", "", 20));
+        let cleared = store(&operate(
+            &serde_json::to_string(&first).unwrap(),
+            "clear",
+            "",
+            20,
+        ));
         assert!(cleared.snapshots.is_empty());
     }
 
