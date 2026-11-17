@@ -2,7 +2,6 @@
 use serde::{Deserialize, Serialize};
 
 const MAX_EVENTS: usize = 500;
-const MAX_CATEGORY_BYTES: usize = 24;
 const MAX_ACTION_BYTES: usize = 48;
 const MAX_DETAIL_BYTES: usize = 240;
 const ALLOWED_CATEGORIES: [&str; 4] = ["profile", "config", "runtime", "system"];
@@ -24,14 +23,15 @@ struct EventLog {
 
 impl Default for EventLog {
     fn default() -> Self {
-        Self { schema_version: 1, events: Vec::new() }
+        Self {
+            schema_version: 1,
+            events: Vec::new(),
+        }
     }
 }
 
 fn valid_text(value: &str, max_bytes: usize) -> bool {
-    !value.trim().is_empty()
-        && value.len() <= max_bytes
-        && !value.chars().any(char::is_control)
+    !value.trim().is_empty() && value.len() <= max_bytes && !value.chars().any(char::is_control)
 }
 
 fn parse(input: &str) -> Result<EventLog, &'static str> {
@@ -141,7 +141,14 @@ mod tests {
     fn appends_in_order() {
         let first = operate("", "record", "profile", "create", "created profile", 10);
         let json = log(&first);
-        let second = operate(&serde_json::to_string(&json).unwrap(), "record", "config", "set", "log level", 20);
+        let second = operate(
+            &serde_json::to_string(&json).unwrap(),
+            "record",
+            "config",
+            "set",
+            "log level",
+            20,
+        );
         let events = log(&second).events;
         assert_eq!(events.len(), 2);
         assert!(events[0].id < events[1].id);
@@ -151,23 +158,39 @@ mod tests {
     fn clear_removes_events() {
         let first = operate("", "record", "system", "startup", "app opened", 10);
         let current = log(&first);
-        let cleared = operate(&serde_json::to_string(&current).unwrap(), "clear", "", "", "", 20);
+        let cleared = operate(
+            &serde_json::to_string(&current).unwrap(),
+            "clear",
+            "",
+            "",
+            "",
+            20,
+        );
         assert!(log(&cleared).events.is_empty());
     }
 
     #[test]
     fn rejects_unknown_category() {
-        assert!(operate("", "record", "other_app", "read", "data", 1).contains("invalid_event_category"));
+        assert!(
+            operate("", "record", "other_app", "read", "data", 1)
+                .contains("invalid_event_category")
+        );
     }
 
     #[test]
     fn rejects_control_characters() {
-        assert!(operate("", "record", "system", "bad\naction", "detail", 1).contains("invalid_event_action"));
+        assert!(
+            operate("", "record", "system", "bad\naction", "detail", 1)
+                .contains("invalid_event_action")
+        );
     }
 
     #[test]
     fn rejects_negative_timestamp() {
-        assert!(operate("", "record", "system", "startup", "opened", -1).contains("invalid_timestamp"));
+        assert!(
+            operate("", "record", "system", "startup", "opened", -1)
+                .contains("invalid_timestamp")
+        );
     }
 
     #[test]
@@ -179,7 +202,14 @@ mod tests {
     fn keeps_only_latest_five_hundred_events() {
         let mut current = String::new();
         for timestamp in 1..=501 {
-            current = operate(&current, "record", "system", "tick", "test event", timestamp);
+            current = operate(
+                &current,
+                "record",
+                "system",
+                "tick",
+                "test event",
+                timestamp,
+            );
             let value: serde_json::Value = serde_json::from_str(&current).unwrap();
             current = value["log"].to_string();
         }
