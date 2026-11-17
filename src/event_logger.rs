@@ -88,10 +88,10 @@ pub fn operate(
                 if !valid_text(detail, MAX_DETAIL_BYTES) {
                     return Err("invalid_event_detail");
                 }
-                let id = log.events.last().map_or(1, |event| event.id.saturating_add(1));
-                if id == 0 {
-                    return Err("event_id_overflow");
-                }
+                let id = match log.events.last() {
+                    Some(event) => event.id.checked_add(1).ok_or("event_id_overflow")?,
+                    None => 1,
+                };
                 if log.events.len() == MAX_EVENTS {
                     log.events.remove(0);
                 }
