@@ -2,10 +2,12 @@ package com.mora.rustandroid
 
 import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.TrafficStats
 import android.os.Process
+import android.os.Build
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
@@ -28,6 +30,7 @@ class MainActivity : Activity() {
     private val configFile by lazy { java.io.File(filesDir, "system_config.json") }
     private val eventFile by lazy { java.io.File(filesDir, "activity_events.json") }
     private val networkFile by lazy { java.io.File(filesDir, "network_snapshots.json") }
+    private val securityAuditFile by lazy { java.io.File(filesDir, "security_audit.json") }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,6 +97,11 @@ class MainActivity : Activity() {
         column.addView(button("Ambil Snapshot Jaringan") { captureNetworkSnapshot() })
         column.addView(button("Lihat Riwayat Jaringan") { showNetworkHistory() })
         column.addView(button("Hapus Riwayat Jaringan") { clearNetworkHistory() })
+
+        section("Security & Permission Auditor")
+        column.addView(label("Audit metadata dan permission aplikasi ini saja; tidak memindai aplikasi lain atau mengubah permission."))
+        column.addView(button("Jalankan Security Audit") { runSecurityAudit() })
+        column.addView(button("Lihat Audit Terakhir") { showSecurityAudit() })
 
         section("Diagnostics")
         column.addView(Button(this).apply {
@@ -340,6 +348,69 @@ class MainActivity : Activity() {
             output.text = "Riwayat jaringan berhasil dibersihkan."
         } catch (e: Exception) {
             output.text = "Hapus riwayat error: " + (e.localizedMessage ?: e.javaClass.simpleName)
+        }
+    }
+
+    private fun runSecurityAudit() {
+        try {
+            @Suppress("DEPRECATION")
+            val packageInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+            val permissions = org.json.JSONArray()
+            (packageInfo.requestedPermissions ?: emptyArray()).forEach { permission ->
+                permissions.put(JSONObject().apply {
+                    put("name", permission)
+                    put("granted", checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED)
+                })
+            }
+            val appInfo = applicationInfo
+            val input = JSONObject().apply {
+                put("package_name", packageName)
+                put("target_sdk", appInfo.targetSdkVersion)
+                put("debuggable", appInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
+                put("allow_backup", appInfo.flags and android.content.pm.ApplicationInfo.FLAG_ALLOW_BACKUP != 0)
+                put("uses_cleartext_traffic", appInfo.usesCleartextTraffic)
+                put("security_patch", Build.VERSION.SECURITY_PATCH ?: "")
+                put("permissions", permissions)
+            }
+            val response = JSONObject(NativeCore.nativeSecurityAudit(input.toString(), System.currentTimeMillis()))
+            if (!response.optBoolean("ok")) {
+                output.text = "Security audit gagal: " + response.optString("error")
+                return
+            }
+            val report = response.getJSONObject("report")
+            securityAuditFile.writeText(report.toString(2), Charsets.UTF_8)
+            val findings = report.getJSONArray("findings")
+            val lines = (0 until findings.length()).map { index ->
+                val item = findings.getJSONObject(index)
+                "[" + item.optString("severity").uppercase() + "] " + item.optString("title") +
+                    "\n" + item.optString("detail") +
+                    "\nSaran: " + item.optString("recommendation")
+            }
+            output.text = "SECURITY AUDIT SELESAI" +
+                "\nRisk: " + report.optString("risk_level").uppercase() +
+                " (" + report.optInt("risk_score") + "/100)" +
+                "\nPackage: " + report.optString("package_name") +
+                "\nTarget SDK: " + appInfo.targetSdkVersion +
+                "\nSecurity patch: " + Build.VERSION.SECURITY_PATCH +
+                "\nPermission diminta: " + report.optInt("permission_count") +
+                "\nDangerous granted: " + report.optInt("granted_dangerous_count") +
+                "\nDangerous denied: " + report.optInt("denied_dangerous_count") +
+                "\n\n" + lines.joinToString("\n\n").ifEmpty { "Tidak ada temuan." }
+            recordEvent("security", "audit_completed", "Risk: " + report.optString("risk_level"))
+        } catch (e: Exception) {
+            output.text = "Security audit error: " + (e.localizedMessage ?: e.javaClass.simpleName)
+        }
+    }
+
+    private fun showSecurityAudit() {
+        if (!securityAuditFile.exists()) {
+            output.text = "Belum ada hasil security audit."
+            return
+        }
+        try {
+            output.text = JSONObject(securityAuditFile.readText(Charsets.UTF_8)).toString(2)
+        } catch (e: Exception) {
+            output.text = "Gagal membaca audit: " + (e.localizedMessage ?: e.javaClass.simpleName)
         }
     }
 
