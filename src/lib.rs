@@ -41,13 +41,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn version_seven() {
-        assert_eq!(mora_core_api_version(), 7);
+    fn version_eight() {
+        assert_eq!(mora_core_api_version(), 8);
     }
 
     #[test]
-    fn capabilities_v7() {
-        assert_eq!(mora_core_capabilities(), 511);
+    fn capabilities_v8() {
+        assert_eq!(mora_core_capabilities(), 1023);
     }
 
     #[test]
