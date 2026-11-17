@@ -2,6 +2,16 @@
 
 Independent Rust native library with an Android Kotlin demo. This is not Mora Shield and does not modify any existing app.
 
+## Stage 7
+- Native API v6 and capability bitmask `0xff`.
+- Rust Event Logger records app-owned profile, configuration, runtime, and system events.
+- Each event contains a monotonic event ID, timestamp (milliseconds), category, action, and detail.
+- Operations: `list`, `record`, and `clear`.
+- Android persists the log in app-private `filesDir/activity_events.json`.
+- Log is bounded to 500 records; oldest events are discarded first.
+- Input is validated; unknown categories, control characters, invalid timestamps, and malformed stores are rejected.
+- This logger records only events explicitly sent by this app. It does not inspect other apps or system-wide activity.
+
 ## Stage 6
 - Native API v5 and capability bitmask `0x7f`.
 - Runtime Manager tracks three app-owned logical services: `profile_store`, `config_store`, and `diagnostics`.
@@ -9,10 +19,6 @@ Independent Rust native library with an Android Kotlin demo. This is not Mora Sh
 - Runtime state persists in app-private `filesDir/runtime_services.json`.
 - Disabled services cannot be started; disabling a running service stops its logical runtime state.
 - This is an app-owned state registry, not an Android system-service controller or process launcher.
-
-Independent Rust native library with an Android Kotlin demo. This is not Mora Shield and does not modify any existing app.
-
-Independent Rust native library with an Android Kotlin demo. This is not Mora Shield and does not modify any existing app.
 
 ## Stage 5
 - Native API v4 and capability bitmask `0x3f`.
@@ -22,20 +28,8 @@ Independent Rust native library with an Android Kotlin demo. This is not Mora Sh
 - Unknown keys, invalid values, malformed JSON, unsupported schema versions, and invalid timestamps are rejected.
 - No Android global settings, root operations, hardware identifier changes, or security bypasses.
 
-## Stage 4
-- Native API v3 and capability bitmask.
-- Rust profile CRUD engine: create, list, update, delete.
-- Validated profile IDs and normalized labels.
-- Android persists the JSON document in private app storage at `filesDir/profiles.json`.
-- JNI uses checked string conversions.
-- CI builds arm64-v8a, armeabi-v7a, and x86_64 APK libraries.
-
-Capability bits: `0x01` arithmetic, `0x02` labels, `0x04` profile IDs, `0x08` safe text, `0x10` profile CRUD.
-
-JNI entry point: `nativeProfileOperation(storeJson, operation, id, label, timestamp)`. Operations are `create`, `list`, `update`, `delete`. Result JSON contains `ok`, `store`, and optional `error`.
-
 ## Test
-Download the `mora-rust-android-demo-apk` artifact from the latest successful Actions run, extract `app-debug.apk`, then install with `adb install -r app-debug.apk`. Use the profile form to create, view, update, and delete records. Restart the app to verify persistence. Device test target: 12/12.
+Download the `mora-rust-android-demo-apk` artifact from the latest successful Actions run, extract `app-debug.apk`, install it, and test the UI. Restart the app to verify local persistence.
 
 ## Local checks
 ```bash
@@ -44,4 +38,4 @@ cargo clippy --all-targets -- -D warnings
 cargo test --all-targets
 ```
 
-The profile store handles app-owned data only. It does not spoof hardware identifiers or bypass Android security, Play Integrity, or hardware attestation.
+The core handles app-owned data only. It does not spoof hardware identifiers or bypass Android security, Play Integrity, or hardware attestation.
