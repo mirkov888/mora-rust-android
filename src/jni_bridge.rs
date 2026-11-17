@@ -156,11 +156,10 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeRuntimeOperati
 #[cfg(test)]
 mod tests {
     #[test]
-    fn api_v5() {
-        assert_eq!(crate::mora_core_api_version(), 5);
+    fn api_v6() {
+        assert_eq!(crate::mora_core_api_version(), 6);
     }
 }
-
 
 #[no_mangle]
 pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeEventLogOperation(
