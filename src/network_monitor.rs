@@ -115,10 +115,8 @@ pub fn operate(input: &str, operation: &str, snapshot_json: &str, timestamp: i64
                     return Err("invalid_network_state");
                 }
                 let previous = store.snapshots.last();
-                let rx_delta =
-                    previous.and_then(|old| sample.rx_bytes?.checked_sub(old.rx_bytes?));
-                let tx_delta =
-                    previous.and_then(|old| sample.tx_bytes?.checked_sub(old.tx_bytes?));
+                let rx_delta = previous.and_then(|old| sample.rx_bytes?.checked_sub(old.rx_bytes?));
+                let tx_delta = previous.and_then(|old| sample.tx_bytes?.checked_sub(old.tx_bytes?));
                 let counter_reset = previous.is_some_and(|old| {
                     matches!((old.rx_bytes, sample.rx_bytes), (Some(a), Some(b)) if b < a)
                         || matches!((old.tx_bytes, sample.tx_bytes), (Some(a), Some(b)) if b < a)
