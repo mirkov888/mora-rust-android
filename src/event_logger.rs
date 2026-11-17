@@ -171,25 +171,20 @@ mod tests {
 
     #[test]
     fn rejects_unknown_category() {
-        assert!(
-            operate("", "record", "other_app", "read", "data", 1)
-                .contains("invalid_event_category")
-        );
+        assert!(operate("", "record", "other_app", "read", "data", 1)
+            .contains("invalid_event_category"));
     }
 
     #[test]
     fn rejects_control_characters() {
-        assert!(
-            operate("", "record", "system", "bad\naction", "detail", 1)
-                .contains("invalid_event_action")
-        );
+        assert!(operate("", "record", "system", "bad\naction", "detail", 1)
+            .contains("invalid_event_action"));
     }
 
     #[test]
     fn rejects_negative_timestamp() {
         assert!(
-            operate("", "record", "system", "startup", "opened", -1)
-                .contains("invalid_timestamp")
+            operate("", "record", "system", "startup", "opened", -1).contains("invalid_timestamp")
         );
     }
 
