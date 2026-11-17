@@ -31,6 +31,7 @@ struct Finding {
 struct AuditReport {
     schema_version: u32,
     package_name: String,
+    security_patch: String,
     generated_at_ms: i64,
     risk_score: u32,
     risk_level: &'static str,
@@ -136,6 +137,7 @@ pub fn audit(input_json: &str, now_ms: i64) -> String {
         Ok(AuditReport {
             schema_version: 1,
             package_name: input.package_name,
+            security_patch: input.security_patch,
             generated_at_ms: now_ms,
             risk_score: score,
             risk_level,
@@ -205,9 +207,8 @@ mod tests {
 
     #[test]
     fn rejects_too_many_permissions() {
-        let mut raw = input("");
         let permissions = (0..257).map(|_| r#"{"name":"android.permission.CAMERA","granted":false}"#).collect::<Vec<_>>().join(",");
-        raw = format!(r#"{{"package_name":"com.example.app","target_sdk":35,"debuggable":false,"allow_backup":false,"uses_cleartext_traffic":false,"security_patch":"","permissions":[{}]}}"#, permissions);
+        let raw = format!(r#"{{"package_name":"com.example.app","target_sdk":35,"debuggable":false,"allow_backup":false,"uses_cleartext_traffic":false,"security_patch":"","permissions":[{}]}}"#, permissions);
         let out: serde_json::Value = serde_json::from_str(&audit(&raw, 10)).unwrap();
         assert_eq!(out["ok"], false);
     }
