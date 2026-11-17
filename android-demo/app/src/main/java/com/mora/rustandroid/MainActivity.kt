@@ -67,7 +67,10 @@ class MainActivity : Activity() {
 
         section("Runtime & Service Manager")
         column.addView(label("Service ID: profile_store · config_store · diagnostics"))
-        serviceInput = EditText(this).apply { hint = "Service ID, contoh: diagnostics" }
+        serviceInput = EditText(this).apply {
+            hint = "Service ID: profile_store / config_store / diagnostics"
+            setText("diagnostics")
+        }
         column.addView(serviceInput)
         column.addView(button("Lihat Status Semua Service") { runRuntime("list") })
         column.addView(button("Start Service") { runRuntime("start") })
@@ -149,7 +152,8 @@ class MainActivity : Activity() {
     private fun runRuntime(operation: String) {
         try {
             val response = JSONObject(NativeCore.nativeRuntimeOperation(
-                readFile(runtimeFile, ""), operation, serviceInput.text.toString().trim(),
+                readFile(runtimeFile, ""), operation,
+                serviceInput.text.toString().trim().ifEmpty { "diagnostics" },
                 System.currentTimeMillis()
             ))
             if (!response.optBoolean("ok")) {
