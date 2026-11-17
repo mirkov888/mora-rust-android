@@ -43,7 +43,7 @@ class MainActivity : Activity() {
         column.addView(label("Mora Rust Android Core", 24f).apply {
             typeface = Typeface.DEFAULT_BOLD
         })
-        column.addView(label("Profile & System Configuration · JNI API v4"))
+        column.addView(label("Profile · Configuration · Runtime Manager · JNI API v5"))
 
         section("Profile Manager")
         idInput = EditText(this).apply { hint = "Profile ID, contoh: daily_01" }
