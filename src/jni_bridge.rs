@@ -153,6 +153,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeRuntimeOperati
         .map(|s| s.into_raw())
         .unwrap_or(ptr::null_mut())
 }
+
 #[no_mangle]
 pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeEventLogOperation(
     mut e: JNIEnv<'_>,
@@ -200,7 +201,6 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeNetworkMonitor
         .map(|s| s.into_raw())
         .unwrap_or(ptr::null_mut())
 }
-
 
 #[no_mangle]
 pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeSecurityAudit(
