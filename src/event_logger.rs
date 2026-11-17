@@ -150,7 +150,8 @@ mod tests {
     #[test]
     fn clear_removes_events() {
         let first = operate("", "record", "system", "startup", "app opened", 10);
-        let cleared = operate(&log(&first).pipe_json(), "clear", "", "", "", 20);
+        let current = log(&first);
+        let cleared = operate(&serde_json::to_string(&current).unwrap(), "clear", "", "", "", 20);
         assert!(log(&cleared).events.is_empty());
     }
 
