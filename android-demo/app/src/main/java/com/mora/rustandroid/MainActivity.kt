@@ -367,7 +367,7 @@ class MainActivity : Activity() {
                 put("package_name", packageName)
                 put("target_sdk", appInfo.targetSdkVersion)
                 put("debuggable", appInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
-                put("allow_backup", appInfo.flags and android.content.pm.ApplicationInfo.FLAG_ALLOW_BACKUP != 0)
+                put("allow_backup", appInfo.flags and 0x00008000 != 0)
                 put("uses_cleartext_traffic", appInfo.usesCleartextTraffic)
                 put("security_patch", Build.VERSION.SECURITY_PATCH ?: "")
                 put("permissions", permissions)
@@ -417,8 +417,8 @@ class MainActivity : Activity() {
     private fun runTests() {
         try {
             val checks = mutableListOf(
-                NativeCore.nativeCoreApiVersion() == 7,
-                NativeCore.nativeCoreCapabilities() == 511,
+                NativeCore.nativeCoreApiVersion() == 8,
+                NativeCore.nativeCoreCapabilities() == 1023,
                 NativeCore.nativeAdd(20, 22) == 42,
                 NativeCore.nativeNormalizeProfileLabel(" Daily ") == "Daily",
                 NativeCore.nativeNormalizeProfileLabel("  ") == null,
@@ -529,9 +529,21 @@ class MainActivity : Activity() {
             ))
             checks.add(clearedNetwork.optBoolean("ok") &&
                 clearedNetwork.getJSONObject("monitor").getJSONArray("snapshots").length() == 0)
+            val cleanAudit = JSONObject(NativeCore.nativeSecurityAudit(
+                """{"package_name":"com.example.app","target_sdk":35,"debuggable":false,"allow_backup":false,"uses_cleartext_traffic":false,"security_patch":"2026-10-01","permissions":[]}""",
+                10
+            ))
+            checks.add(cleanAudit.optBoolean("ok") &&
+                cleanAudit.getJSONObject("report").optString("risk_level") == "good")
+            val riskyAudit = JSONObject(NativeCore.nativeSecurityAudit(
+                """{"package_name":"com.example.app","target_sdk":28,"debuggable":true,"allow_backup":false,"uses_cleartext_traffic":true,"security_patch":"","permissions":[]}""",
+                20
+            ))
+            checks.add(riskyAudit.optBoolean("ok") &&
+                riskyAudit.getJSONObject("report").optInt("risk_score") == 80)
             val passed = checks.count { it }
             output.text = (if (passed == checks.size) "SEMUA TES BERHASIL" else "ADA TES GAGAL") +
-                "\nTes: $passed/${checks.size}\nAPI v7 · Capability 0x1ff"
+                "\nTes: $passed/${checks.size}\nAPI v8 · Capability 0x3ff"
         } catch (e: Exception) {
             output.text = "Tes gagal: " + (e.localizedMessage ?: e.javaClass.simpleName)
         }
