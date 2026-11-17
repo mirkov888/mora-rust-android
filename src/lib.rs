@@ -1,4 +1,5 @@
 //! Mora Rust Android Core.
+pub mod core_api;
 pub mod event_logger;
 pub mod identity;
 pub mod jni_bridge;
@@ -20,15 +21,18 @@ pub const CAP_RUNTIME_MANAGER: u32 = 64;
 pub const CAP_EVENT_LOGGER: u32 = 128;
 pub const CAP_NETWORK_MONITOR: u32 = 256;
 pub const CAP_SECURITY_AUDITOR: u32 = 512;
+pub const CAP_UNIFIED_CORE_API: u32 = 1024;
+pub const CORE_API_VERSION: u32 = 9;
+pub const CORE_CAPABILITIES: u32 = 2047;
 
 #[no_mangle]
 pub extern "C" fn mora_core_api_version() -> u32 {
-    8
+    CORE_API_VERSION
 }
 
 #[no_mangle]
 pub extern "C" fn mora_core_capabilities() -> u32 {
-    1023
+    CORE_CAPABILITIES
 }
 
 #[no_mangle]
@@ -41,13 +45,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn version_eight() {
-        assert_eq!(mora_core_api_version(), 8);
+    fn version_nine() {
+        assert_eq!(mora_core_api_version(), 9);
     }
 
     #[test]
-    fn capabilities_v8() {
-        assert_eq!(mora_core_capabilities(), 1023);
+    fn capabilities_v9() {
+        assert_eq!(mora_core_capabilities(), 2047);
     }
 
     #[test]
