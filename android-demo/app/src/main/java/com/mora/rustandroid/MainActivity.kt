@@ -21,6 +21,7 @@ class MainActivity : Activity() {
     private val runtimeFile by lazy { java.io.File(filesDir, "runtime_services.json") }
     private val profileFile by lazy { java.io.File(filesDir, "profiles.json") }
     private val configFile by lazy { java.io.File(filesDir, "system_config.json") }
+    private val eventFile by lazy { java.io.File(filesDir, "activity_events.json") }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,11 +73,16 @@ class MainActivity : Activity() {
             setText("diagnostics")
         }
         column.addView(serviceInput)
-        column.addView(button("Lihat Status Semua Service") { runRuntime("list") })
+        column.addView(button("Lihat Status Semua Service") { runRuntime("list")
+        recordEvent("system", "app_open", "Mora Rust Android Core dibuka") })
         column.addView(button("Start Service") { runRuntime("start") })
         column.addView(button("Stop Service") { runRuntime("stop") })
         column.addView(button("Enable Service") { runRuntime("enable") })
         column.addView(button("Disable Service") { runRuntime("disable") })
+
+        section("Event & Activity Logger")
+        column.addView(button("Lihat Activity Log") { showEventLog() })
+        column.addView(button("Hapus Semua Log") { clearEventLog() })
 
         section("Diagnostics")
         column.addView(Button(this).apply {
@@ -102,6 +108,59 @@ class MainActivity : Activity() {
     private fun readFile(file: java.io.File, fallback: String): String =
         if (file.exists()) file.readText(Charsets.UTF_8) else fallback
 
+    
+    private fun recordEvent(category: String, action: String, detail: String) {
+        try {
+            val response = JSONObject(NativeCore.nativeEventLogOperation(
+                readFile(eventFile, ""), "record", category, action,
+                detail.take(240).ifBlank { "No detail" }, System.currentTimeMillis()
+            ))
+            if (response.optBoolean("ok")) {
+                eventFile.writeText(response.getJSONObject("log").toString(), Charsets.UTF_8)
+            }
+        } catch (_: Exception) {
+            // Logging must never interrupt the primary operation.
+        }
+    }
+
+    private fun showEventLog() {
+        try {
+            val response = JSONObject(NativeCore.nativeEventLogOperation(
+                readFile(eventFile, ""), "list", "", "", "", System.currentTimeMillis()
+            ))
+            if (!response.optBoolean("ok")) {
+                output.text = "Event log gagal: " + response.optString("error")
+                return
+            }
+            val events = response.getJSONObject("log").getJSONArray("events")
+            output.text = (0 until events.length()).map { i ->
+                val event = events.getJSONObject(i)
+                "#" + event.optLong("id") + " " + event.optString("category") + "/" +
+                    event.optString("action") + ": " + event.optString("detail")
+            }.reversed().joinToString("\n")
+            if (events.length() == 0) output.text = "Belum ada event."
+        } catch (e: Exception) {
+            output.text = "Event log error: " + (e.localizedMessage ?: e.javaClass.simpleName)
+        }
+    }
+
+    private fun clearEventLog() {
+        try {
+            val response = JSONObject(NativeCore.nativeEventLogOperation(
+                readFile(eventFile, ""), "clear", "", "", "", System.currentTimeMillis()
+            ))
+            if (!response.optBoolean("ok")) {
+                output.text = "Hapus log gagal: " + response.optString("error")
+                return
+            }
+            eventFile.writeText(response.getJSONObject("log").toString(), Charsets.UTF_8)
+            recordEvent("system", "event_log_cleared", "Activity log dibersihkan")
+            output.text = "Activity log berhasil dibersihkan."
+        } catch (e: Exception) {
+            output.text = "Hapus log error: " + (e.localizedMessage ?: e.javaClass.simpleName)
+        }
+    }
+
     private fun runProfile(operation: String) {
         try {
             val response = JSONObject(
@@ -114,11 +173,13 @@ class MainActivity : Activity() {
                 )
             )
             if (!response.optBoolean("ok")) {
+                recordEvent("profile", operation + "_failed", response.optString("error"))
                 output.text = "Profile gagal: " + response.optString("error")
                 return
             }
             val json = response.getJSONObject("store").toString(2)
             profileFile.writeText(json, Charsets.UTF_8)
+            recordEvent("profile", operation, "Operasi profile berhasil")
             output.text = "Profile berhasil: $operation\n$json"
         } catch (e: Exception) {
             output.text = "Profile error: " + (e.localizedMessage ?: e.javaClass.simpleName)
@@ -137,11 +198,13 @@ class MainActivity : Activity() {
                 )
             )
             if (!response.optBoolean("ok")) {
+                recordEvent("config", operation + "_failed", response.optString("error"))
                 output.text = "Config gagal: " + response.optString("error")
                 return
             }
             val json = response.getJSONObject("config").toString(2)
             configFile.writeText(json, Charsets.UTF_8)
+            recordEvent("config", operation, "Operasi configuration berhasil")
             output.text = "System config berhasil: $operation\n$json"
         } catch (e: Exception) {
             output.text = "Config error: " + (e.localizedMessage ?: e.javaClass.simpleName)
@@ -157,11 +220,13 @@ class MainActivity : Activity() {
                 System.currentTimeMillis()
             ))
             if (!response.optBoolean("ok")) {
+                recordEvent("runtime", operation + "_failed", response.optString("error"))
                 output.text = "Runtime gagal: " + response.optString("error")
                 return
             }
             val json = response.getJSONObject("runtime").toString(2)
             runtimeFile.writeText(json, Charsets.UTF_8)
+            recordEvent("runtime", operation, "Service: " + serviceInput.text.toString().trim())
             output.text = "Runtime berhasil: $operation\\n$json\\nStatus logis service internal aplikasi."
         } catch (e: Exception) {
             output.text = "Runtime error: " + (e.localizedMessage ?: e.javaClass.simpleName)
@@ -171,8 +236,8 @@ class MainActivity : Activity() {
     private fun runTests() {
         try {
             val checks = mutableListOf(
-                NativeCore.nativeCoreApiVersion() == 5,
-                NativeCore.nativeCoreCapabilities() == 127,
+                NativeCore.nativeCoreApiVersion() == 6,
+                NativeCore.nativeCoreCapabilities() == 255,
                 NativeCore.nativeAdd(20, 22) == 42,
                 NativeCore.nativeNormalizeProfileLabel(" Daily ") == "Daily",
                 NativeCore.nativeNormalizeProfileLabel("  ") == null,
@@ -248,9 +313,17 @@ class MainActivity : Activity() {
                 disabled.getJSONObject("runtime").toString(), "start", "diagnostics", 30
             ))
             checks.add(!rejected.optBoolean("ok"))
+            val emptyLog = JSONObject(NativeCore.nativeEventLogOperation("", "list", "", "", "", 0))
+            checks.add(emptyLog.optBoolean("ok") && emptyLog.getJSONObject("log").getJSONArray("events").length() == 0)
+            val recordedLog = JSONObject(NativeCore.nativeEventLogOperation("", "record", "system", "test_event", "logger smoke test", 10))
+            checks.add(recordedLog.optBoolean("ok") && recordedLog.getJSONObject("log").getJSONArray("events").length() == 1)
+            val clearedLog = JSONObject(NativeCore.nativeEventLogOperation(recordedLog.getJSONObject("log").toString(), "clear", "", "", "", 20))
+            checks.add(clearedLog.optBoolean("ok") && clearedLog.getJSONObject("log").getJSONArray("events").length() == 0)
+            val invalidEvent = JSONObject(NativeCore.nativeEventLogOperation("", "record", "other_app", "read", "not allowed", 10))
+            checks.add(!invalidEvent.optBoolean("ok"))
             val passed = checks.count { it }
             output.text = (if (passed == checks.size) "SEMUA TES BERHASIL" else "ADA TES GAGAL") +
-                "\nTes: $passed/${checks.size}\nAPI v5 · Capability 0x7f"
+                "\nTes: $passed/${checks.size}\nAPI v6 · Capability 0xff"
         } catch (e: Exception) {
             output.text = "Tes gagal: " + (e.localizedMessage ?: e.javaClass.simpleName)
         }
