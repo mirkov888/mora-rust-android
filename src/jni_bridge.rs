@@ -153,14 +153,6 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeRuntimeOperati
         .map(|s| s.into_raw())
         .unwrap_or(ptr::null_mut())
 }
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn api_v6() {
-        assert_eq!(crate::mora_core_api_version(), 6);
-    }
-}
-
 #[no_mangle]
 pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeEventLogOperation(
     mut e: JNIEnv<'_>,
@@ -186,3 +178,12 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeEventLogOperat
         .map(|s| s.into_raw())
         .unwrap_or(ptr::null_mut())
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn api_v6() {
+        assert_eq!(crate::mora_core_api_version(), 6);
+    }
+}
+
