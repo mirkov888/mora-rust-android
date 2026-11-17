@@ -12,4 +12,5 @@ object NativeCore {
  @JvmStatic external fun nativeRuntimeOperation(runtimeJson:String,operation:String,id:String,timestamp:Long):String
  @JvmStatic external fun nativeEventLogOperation(logJson:String,operation:String,category:String,action:String,detail:String,timestamp:Long):String
  @JvmStatic external fun nativeNetworkMonitorOperation(storeJson:String,operation:String,snapshotJson:String,timestamp:Long):String
+ @JvmStatic external fun nativeSecurityAudit(inputJson:String,timestamp:Long):String
 }
