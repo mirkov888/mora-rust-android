@@ -179,13 +179,11 @@ pub fn audit(input_json: &str, now_ms: i64) -> String {
         }
 
         for permission in &input.permissions {
-            if permission.name.len() > 255
-                || permission.name.bytes().any(|b| b.is_ascii_control())
+            if permission.name.len() > 255 || permission.name.bytes().any(|b| b.is_ascii_control())
             {
                 return Err("invalid_permission_name");
             }
-            if let Some((severity, title, recommendation)) =
-                dangerous_permission(&permission.name)
+            if let Some((severity, title, recommendation)) = dangerous_permission(&permission.name)
             {
                 if permission.granted {
                     granted_dangerous_count += 1;
