@@ -132,6 +132,18 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeSystemConfigOp
         .unwrap_or(ptr::null_mut())
 }
 
+
+#[no_mangle]
+pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeRuntimeOperation(
+ mut e: JNIEnv<'_>, _: JClass<'_>, runtime: JString<'_>, operation: JString<'_>,
+ id: JString<'_>, time: jlong,
+) -> jstring {
+ let (Some(runtime), Some(operation), Some(id)) = (read(&mut e, &runtime), read(&mut e, &operation), read(&mut e, &id)) else {
+  return ptr::null_mut();
+ };
+ let out = crate::runtime_manager::operate(&runtime, &operation, &id, time);
+ e.new_string(out).map(|s| s.into_raw()).unwrap_or(ptr::null_mut())
+}
 #[cfg(test)]
 mod tests {
     #[test]
