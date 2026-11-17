@@ -2,6 +2,7 @@
 pub mod event_logger;
 pub mod identity;
 pub mod jni_bridge;
+pub mod network_monitor;
 pub mod profile_store;
 pub mod profiles;
 pub mod runtime_manager;
@@ -16,15 +17,16 @@ pub const CAP_PROFILE_STORE: u32 = 16;
 pub const CAP_SYSTEM_CONFIG: u32 = 32;
 pub const CAP_RUNTIME_MANAGER: u32 = 64;
 pub const CAP_EVENT_LOGGER: u32 = 128;
+pub const CAP_NETWORK_MONITOR: u32 = 256;
 
 #[no_mangle]
 pub extern "C" fn mora_core_api_version() -> u32 {
-    6
+    7
 }
 
 #[no_mangle]
 pub extern "C" fn mora_core_capabilities() -> u32 {
-    255
+    511
 }
 
 #[no_mangle]
@@ -37,13 +39,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn version_six() {
-        assert_eq!(mora_core_api_version(), 6);
+    fn version_seven() {
+        assert_eq!(mora_core_api_version(), 7);
     }
 
     #[test]
-    fn capabilities_v6() {
-        assert_eq!(mora_core_capabilities(), 255);
+    fn capabilities_v7() {
+        assert_eq!(mora_core_capabilities(), 511);
     }
 
     #[test]
