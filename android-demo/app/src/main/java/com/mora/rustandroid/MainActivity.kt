@@ -1,6 +1,11 @@
 package com.mora.rustandroid
 
 import android.app.Activity
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.TrafficStats
+import android.os.Process
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
@@ -22,6 +27,7 @@ class MainActivity : Activity() {
     private val profileFile by lazy { java.io.File(filesDir, "profiles.json") }
     private val configFile by lazy { java.io.File(filesDir, "system_config.json") }
     private val eventFile by lazy { java.io.File(filesDir, "activity_events.json") }
+    private val networkFile by lazy { java.io.File(filesDir, "network_snapshots.json") }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,7 +50,7 @@ class MainActivity : Activity() {
         column.addView(label("Mora Rust Android Core", 24f).apply {
             typeface = Typeface.DEFAULT_BOLD
         })
-        column.addView(label("Profile · Configuration · Runtime Manager · Event Logger · JNI API v6"))
+        column.addView(label("Profile · Configuration · Runtime Manager · Event Logger · Network Monitor · JNI API v7"))
 
         section("Profile Manager")
         idInput = EditText(this).apply { hint = "Profile ID, contoh: daily_01" }
@@ -82,6 +88,12 @@ class MainActivity : Activity() {
         section("Event & Activity Logger")
         column.addView(button("Lihat Activity Log") { showEventLog() })
         column.addView(button("Hapus Semua Log") { clearEventLog() })
+
+        section("Network Monitor")
+        column.addView(label("Statistik byte untuk UID aplikasi ini saja; bukan trafik aplikasi lain."))
+        column.addView(button("Ambil Snapshot Jaringan") { captureNetworkSnapshot() })
+        column.addView(button("Lihat Riwayat Jaringan") { showNetworkHistory() })
+        column.addView(button("Hapus Riwayat Jaringan") { clearNetworkHistory() })
 
         section("Diagnostics")
         column.addView(Button(this).apply {
@@ -236,11 +248,106 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun captureNetworkSnapshot() {
+        try {
+            val connectivity = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = connectivity.activeNetwork
+            val capabilities = network?.let { connectivity.getNetworkCapabilities(it) }
+            val transport = when {
+                capabilities == null -> "none"
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> "vpn"
+                else -> "other"
+            }
+            val rx = TrafficStats.getUidRxBytes(Process.myUid())
+            val tx = TrafficStats.getUidTxBytes(Process.myUid())
+            val snapshot = JSONObject().apply {
+                put("uid", Process.myUid())
+                put("rx_bytes", if (rx >= 0) rx else JSONObject.NULL)
+                put("tx_bytes", if (tx >= 0) tx else JSONObject.NULL)
+                put("transport", transport)
+                put("connected", capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true)
+                put("validated", capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true)
+                put("metered", connectivity.isActiveNetworkMetered)
+            }
+            val response = JSONObject(NativeCore.nativeNetworkMonitorOperation(
+                readFile(networkFile, ""), "record", snapshot.toString(), System.currentTimeMillis()
+            ))
+            if (!response.optBoolean("ok")) {
+                output.text = "Network monitor gagal: " + response.optString("error")
+                return
+            }
+            val store = response.getJSONObject("monitor")
+            networkFile.writeText(store.toString(), Charsets.UTF_8)
+            val samples = store.getJSONArray("snapshots")
+            val latest = samples.getJSONObject(samples.length() - 1)
+            recordEvent("system", "network_snapshot", "Transport: $transport")
+            output.text = "Snapshot jaringan tersimpan.\nUID aplikasi: " + Process.myUid() +
+                "\nTransport: " + transport +
+                "\nTerhubung: " + latest.optBoolean("connected") +
+                "\nTervalidasi: " + latest.optBoolean("validated") +
+                "\nMetered: " + latest.optBoolean("metered") +
+                "\nRX total: " + latest.opt("rx_bytes") +
+                "\nTX total: " + latest.opt("tx_bytes") +
+                "\nRX sejak snapshot sebelumnya: " + latest.opt("rx_delta_bytes") +
+                "\nTX sejak snapshot sebelumnya: " + latest.opt("tx_delta_bytes")
+        } catch (e: Exception) {
+            output.text = "Network monitor error: " + (e.localizedMessage ?: e.javaClass.simpleName)
+        }
+    }
+
+    private fun showNetworkHistory() {
+        try {
+            val response = JSONObject(NativeCore.nativeNetworkMonitorOperation(
+                readFile(networkFile, ""), "summary", "", System.currentTimeMillis()
+            ))
+            if (!response.optBoolean("ok")) {
+                output.text = "Riwayat jaringan gagal: " + response.optString("error")
+                return
+            }
+            val store = response.getJSONObject("monitor")
+            val samples = store.getJSONArray("snapshots")
+            val summary = response.getJSONObject("summary")
+            val lines = (0 until samples.length()).map { index ->
+                val item = samples.getJSONObject(index)
+                "#" + item.optLong("id") + " " + item.optString("transport") +
+                    " · RX +" + item.opt("rx_delta_bytes") +
+                    " · TX +" + item.opt("tx_delta_bytes") +
+                    if (item.optBoolean("counter_reset")) " · counter reset" else ""
+            }
+            output.text = "Snapshot: " + summary.optInt("samples") +
+                "\nTotal RX terukur: " + summary.optLong("total_rx_delta_bytes") + " bytes" +
+                "\nTotal TX terukur: " + summary.optLong("total_tx_delta_bytes") + " bytes\n\n" +
+                lines.reversed().joinToString("\n").ifEmpty { "Belum ada snapshot." }
+        } catch (e: Exception) {
+            output.text = "Riwayat jaringan error: " + (e.localizedMessage ?: e.javaClass.simpleName)
+        }
+    }
+
+    private fun clearNetworkHistory() {
+        try {
+            val response = JSONObject(NativeCore.nativeNetworkMonitorOperation(
+                readFile(networkFile, ""), "clear", "", System.currentTimeMillis()
+            ))
+            if (!response.optBoolean("ok")) {
+                output.text = "Hapus riwayat gagal: " + response.optString("error")
+                return
+            }
+            networkFile.writeText(response.getJSONObject("monitor").toString(), Charsets.UTF_8)
+            recordEvent("system", "network_history_cleared", "Riwayat jaringan dibersihkan")
+            output.text = "Riwayat jaringan berhasil dibersihkan."
+        } catch (e: Exception) {
+            output.text = "Hapus riwayat error: " + (e.localizedMessage ?: e.javaClass.simpleName)
+        }
+    }
+
     private fun runTests() {
         try {
             val checks = mutableListOf(
-                NativeCore.nativeCoreApiVersion() == 6,
-                NativeCore.nativeCoreCapabilities() == 255,
+                NativeCore.nativeCoreApiVersion() == 7,
+                NativeCore.nativeCoreCapabilities() == 511,
                 NativeCore.nativeAdd(20, 22) == 42,
                 NativeCore.nativeNormalizeProfileLabel(" Daily ") == "Daily",
                 NativeCore.nativeNormalizeProfileLabel("  ") == null,
@@ -324,9 +431,36 @@ class MainActivity : Activity() {
             checks.add(clearedLog.optBoolean("ok") && clearedLog.getJSONObject("log").getJSONArray("events").length() == 0)
             val invalidEvent = JSONObject(NativeCore.nativeEventLogOperation("", "record", "other_app", "read", "not allowed", 10))
             checks.add(!invalidEvent.optBoolean("ok"))
+            val emptyNetwork = JSONObject(NativeCore.nativeNetworkMonitorOperation("", "list", "", 0))
+            checks.add(emptyNetwork.optBoolean("ok") &&
+                emptyNetwork.getJSONObject("monitor").getJSONArray("snapshots").length() == 0)
+            val networkSample = """{"uid":10123,"rx_bytes":1000,"tx_bytes":2000,"transport":"wifi","connected":true,"validated":true,"metered":false}"""
+            val firstNetwork = JSONObject(NativeCore.nativeNetworkMonitorOperation("", "record", networkSample, 10))
+            checks.add(firstNetwork.optBoolean("ok") &&
+                firstNetwork.getJSONObject("monitor").getJSONArray("snapshots").length() == 1)
+            val nextNetwork = """{"uid":10123,"rx_bytes":1300,"tx_bytes":2600,"transport":"wifi","connected":true,"validated":true,"metered":false}"""
+            val secondNetwork = JSONObject(NativeCore.nativeNetworkMonitorOperation(
+                firstNetwork.getJSONObject("monitor").toString(), "record", nextNetwork, 20
+            ))
+            val latestNetwork = secondNetwork.getJSONObject("monitor").getJSONArray("snapshots").getJSONObject(1)
+            checks.add(secondNetwork.optBoolean("ok") && latestNetwork.optLong("rx_delta_bytes") == 300L &&
+                latestNetwork.optLong("tx_delta_bytes") == 600L)
+            val invalidNetwork = """{"uid":10123,"rx_bytes":1,"tx_bytes":1,"transport":"bluetooth","connected":true,"validated":true,"metered":false}"""
+            checks.add(!JSONObject(NativeCore.nativeNetworkMonitorOperation("", "record", invalidNetwork, 1)).optBoolean("ok"))
+            val resetNetwork = """{"uid":10123,"rx_bytes":10,"tx_bytes":20,"transport":"wifi","connected":true,"validated":true,"metered":false}"""
+            val resetResult = JSONObject(NativeCore.nativeNetworkMonitorOperation(
+                firstNetwork.getJSONObject("monitor").toString(), "record", resetNetwork, 30
+            ))
+            checks.add(resetResult.getJSONObject("monitor").getJSONArray("snapshots")
+                .getJSONObject(1).optBoolean("counter_reset"))
+            val clearedNetwork = JSONObject(NativeCore.nativeNetworkMonitorOperation(
+                secondNetwork.getJSONObject("monitor").toString(), "clear", "", 40
+            ))
+            checks.add(clearedNetwork.optBoolean("ok") &&
+                clearedNetwork.getJSONObject("monitor").getJSONArray("snapshots").length() == 0)
             val passed = checks.count { it }
             output.text = (if (passed == checks.size) "SEMUA TES BERHASIL" else "ADA TES GAGAL") +
-                "\nTes: $passed/${checks.size}\nAPI v6 · Capability 0xff"
+                "\nTes: $passed/${checks.size}\nAPI v7 · Capability 0x1ff"
         } catch (e: Exception) {
             output.text = "Tes gagal: " + (e.localizedMessage ?: e.javaClass.simpleName)
         }
