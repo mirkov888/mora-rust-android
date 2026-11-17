@@ -21,10 +21,7 @@ struct CoreRequest {
 
 impl CoreRequest {
     fn param(&self, key: &str) -> &str {
-        self.params
-            .get(key)
-            .and_then(Value::as_str)
-            .unwrap_or("")
+        self.params.get(key).and_then(Value::as_str).unwrap_or("")
     }
 }
 
@@ -322,20 +319,12 @@ mod tests {
 
     #[test]
     fn rejects_unknown_module_and_schema() {
-        let unknown: Value = serde_json::from_str(&dispatch(&request(
-            "other_app",
-            "list",
-            json!({}),
-        )))
-        .unwrap();
+        let unknown: Value =
+            serde_json::from_str(&dispatch(&request("other_app", "list", json!({})))).unwrap();
         assert_eq!(unknown["error"], "unknown_module");
 
-        let mut bad_schema: Value = serde_json::from_str(&request(
-            "profile_store",
-            "list",
-            json!({}),
-        ))
-        .unwrap();
+        let mut bad_schema: Value =
+            serde_json::from_str(&request("profile_store", "list", json!({}))).unwrap();
         bad_schema["schema_version"] = json!(99);
         assert_eq!(
             serde_json::from_str::<Value>(&dispatch(&bad_schema.to_string())).unwrap()["error"],
@@ -355,12 +344,8 @@ mod tests {
             "request_too_large"
         );
 
-        let mut bad: Value = serde_json::from_str(&request(
-            "profile_store",
-            "list",
-            json!({}),
-        ))
-        .unwrap();
+        let mut bad: Value =
+            serde_json::from_str(&request("profile_store", "list", json!({}))).unwrap();
         bad["timestamp_ms"] = json!(-1);
         assert_eq!(
             serde_json::from_str::<Value>(&dispatch(&bad.to_string())).unwrap()["error"],
