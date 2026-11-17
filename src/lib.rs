@@ -1,4 +1,5 @@
 //! Mora Rust Android Core.
+pub mod event_logger;
 pub mod identity;
 pub mod jni_bridge;
 pub mod profile_store;
@@ -14,15 +15,16 @@ pub const CAP_SAFE_TEXT: u32 = 8;
 pub const CAP_PROFILE_STORE: u32 = 16;
 pub const CAP_SYSTEM_CONFIG: u32 = 32;
 pub const CAP_RUNTIME_MANAGER: u32 = 64;
+pub const CAP_EVENT_LOGGER: u32 = 128;
 
 #[no_mangle]
 pub extern "C" fn mora_core_api_version() -> u32 {
-    5
+    6
 }
 
 #[no_mangle]
 pub extern "C" fn mora_core_capabilities() -> u32 {
-    127
+    255
 }
 
 #[no_mangle]
@@ -35,13 +37,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn version_five() {
-        assert_eq!(mora_core_api_version(), 5);
+    fn version_six() {
+        assert_eq!(mora_core_api_version(), 6);
     }
 
     #[test]
-    fn capabilities_v5() {
-        assert_eq!(mora_core_capabilities(), 127);
+    fn capabilities_v6() {
+        assert_eq!(mora_core_capabilities(), 255);
     }
 
     #[test]
