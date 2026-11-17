@@ -17,6 +17,8 @@ class MainActivity : Activity() {
     private lateinit var labelInput: EditText
     private lateinit var configKeyInput: EditText
     private lateinit var configValueInput: EditText
+    private lateinit var serviceInput: EditText
+    private val runtimeFile by lazy { java.io.File(filesDir, "runtime_services.json") }
     private val profileFile by lazy { java.io.File(filesDir, "profiles.json") }
     private val configFile by lazy { java.io.File(filesDir, "system_config.json") }
 
@@ -63,6 +65,16 @@ class MainActivity : Activity() {
         column.addView(button("Lihat Pengaturan") { runConfig("get") })
         column.addView(button("Reset Pengaturan") { runConfig("reset") })
 
+        section("Runtime & Service Manager")
+        column.addView(label("Service ID: profile_store · config_store · diagnostics"))
+        serviceInput = EditText(this).apply { hint = "Service ID, contoh: diagnostics" }
+        column.addView(serviceInput)
+        column.addView(button("Lihat Status Semua Service") { runRuntime("list") })
+        column.addView(button("Start Service") { runRuntime("start") })
+        column.addView(button("Stop Service") { runRuntime("stop") })
+        column.addView(button("Enable Service") { runRuntime("enable") })
+        column.addView(button("Disable Service") { runRuntime("disable") })
+
         section("Diagnostics")
         column.addView(Button(this).apply {
             text = "Jalankan Semua Rust Tests"
@@ -75,6 +87,7 @@ class MainActivity : Activity() {
         setContentView(ScrollView(this).apply { addView(column) })
         runProfile("list")
         runConfig("get")
+        runRuntime("list")
     }
 
     private fun button(title: String, action: () -> Unit) =
@@ -132,11 +145,30 @@ class MainActivity : Activity() {
         }
     }
 
+
+    private fun runRuntime(operation: String) {
+        try {
+            val response = JSONObject(NativeCore.nativeRuntimeOperation(
+                readFile(runtimeFile, ""), operation, serviceInput.text.toString().trim(),
+                System.currentTimeMillis()
+            ))
+            if (!response.optBoolean("ok")) {
+                output.text = "Runtime gagal: " + response.optString("error")
+                return
+            }
+            val json = response.getJSONObject("runtime").toString(2)
+            runtimeFile.writeText(json, Charsets.UTF_8)
+            output.text = "Runtime berhasil: $operation\\n$json\\nStatus logis service internal aplikasi."
+        } catch (e: Exception) {
+            output.text = "Runtime error: " + (e.localizedMessage ?: e.javaClass.simpleName)
+        }
+    }
+
     private fun runTests() {
         try {
             val checks = mutableListOf(
-                NativeCore.nativeCoreApiVersion() == 4,
-                NativeCore.nativeCoreCapabilities() == 63,
+                NativeCore.nativeCoreApiVersion() == 5,
+                NativeCore.nativeCoreCapabilities() == 127,
                 NativeCore.nativeAdd(20, 22) == 42,
                 NativeCore.nativeNormalizeProfileLabel(" Daily ") == "Daily",
                 NativeCore.nativeNormalizeProfileLabel("  ") == null,
@@ -198,9 +230,23 @@ class MainActivity : Activity() {
                 resetConfig.optBoolean("ok") &&
                     resetConfig.getJSONObject("config").optString("log_level") == "info"
             )
+
+            val defaultRuntime = JSONObject(NativeCore.nativeRuntimeOperation("", "list", "", 0))
+            checks.add(defaultRuntime.optBoolean("ok") &&
+                defaultRuntime.getJSONObject("runtime").getJSONArray("services").length() == 3)
+            val started = JSONObject(NativeCore.nativeRuntimeOperation("", "start", "diagnostics", 10))
+            checks.add(started.optBoolean("ok") &&
+                started.getJSONObject("runtime").getJSONArray("services").getJSONObject(2).optBoolean("running"))
+            val disabled = JSONObject(NativeCore.nativeRuntimeOperation("", "disable", "diagnostics", 20))
+            checks.add(disabled.optBoolean("ok") &&
+                !disabled.getJSONObject("runtime").getJSONArray("services").getJSONObject(2).optBoolean("running"))
+            val rejected = JSONObject(NativeCore.nativeRuntimeOperation(
+                disabled.getJSONObject("runtime").toString(), "start", "diagnostics", 30
+            ))
+            checks.add(!rejected.optBoolean("ok"))
             val passed = checks.count { it }
             output.text = (if (passed == checks.size) "SEMUA TES BERHASIL" else "ADA TES GAGAL") +
-                "\nTes: $passed/${checks.size}\nAPI v4 · Capability 0x3f"
+                "\nTes: $passed/${checks.size}\nAPI v5 · Capability 0x7f"
         } catch (e: Exception) {
             output.text = "Tes gagal: " + (e.localizedMessage ?: e.javaClass.simpleName)
         }
