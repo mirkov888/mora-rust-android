@@ -30,7 +30,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreCapabiliti
 
 #[no_mangle]
 pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreDescriptor(
-    mut e: JNIEnv<'_>,
+    e: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jstring {
     e.new_string(crate::core_api::descriptor())
