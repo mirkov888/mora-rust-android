@@ -17,7 +17,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreApiVersion
     _: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jint {
-    8
+    crate::mora_core_api_version() as jint
 }
 
 #[no_mangle]
@@ -25,7 +25,31 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreCapabiliti
     _: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jint {
-    1023
+    crate::mora_core_capabilities() as jint
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreDescriptor(
+    mut e: JNIEnv<'_>,
+    _: JClass<'_>,
+) -> jstring {
+    e.new_string(crate::core_api::descriptor())
+        .map(|s| s.into_raw())
+        .unwrap_or(ptr::null_mut())
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreDispatch(
+    mut e: JNIEnv<'_>,
+    _: JClass<'_>,
+    request: JString<'_>,
+) -> jstring {
+    let Some(request) = read(&mut e, &request) else {
+        return ptr::null_mut();
+    };
+    e.new_string(crate::core_api::dispatch(&request))
+        .map(|s| s.into_raw())
+        .unwrap_or(ptr::null_mut())
 }
 
 #[no_mangle]
@@ -221,7 +245,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeSecurityAudit(
 #[cfg(test)]
 mod tests {
     #[test]
-    fn api_v8() {
-        assert_eq!(crate::mora_core_api_version(), 8);
+    fn api_v9() {
+        assert_eq!(crate::mora_core_api_version(), 9);
     }
 }
