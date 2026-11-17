@@ -2,6 +2,16 @@
 
 Independent Rust native library with an Android Kotlin demo. This is not Mora Shield and does not modify any existing app.
 
+## Stage 6
+- Native API v5 and capability bitmask `0x7f`.
+- Runtime Manager tracks three app-owned logical services: `profile_store`, `config_store`, and `diagnostics`.
+- Operations: `list`, `start`, `stop`, `enable`, and `disable`.
+- Runtime state persists in app-private `filesDir/runtime_services.json`.
+- Disabled services cannot be started; disabling a running service stops its logical runtime state.
+- This is an app-owned state registry, not an Android system-service controller or process launcher.
+
+Independent Rust native library with an Android Kotlin demo. This is not Mora Shield and does not modify any existing app.
+
 Independent Rust native library with an Android Kotlin demo. This is not Mora Shield and does not modify any existing app.
 
 ## Stage 5
