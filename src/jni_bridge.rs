@@ -186,4 +186,3 @@ mod tests {
         assert_eq!(crate::mora_core_api_version(), 6);
     }
 }
-
