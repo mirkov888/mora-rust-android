@@ -132,7 +132,6 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeSystemConfigOp
         .unwrap_or(ptr::null_mut())
 }
 
-
 #[no_mangle]
 pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeRuntimeOperation(
     mut e: JNIEnv<'_>,
@@ -157,7 +156,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeRuntimeOperati
 #[cfg(test)]
 mod tests {
     #[test]
-    fn api_v4() {
-        assert_eq!(crate::mora_core_api_version(), 4);
+    fn api_v5() {
+        assert_eq!(crate::mora_core_api_version(), 5);
     }
 }
