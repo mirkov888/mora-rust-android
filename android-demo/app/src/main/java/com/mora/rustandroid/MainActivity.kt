@@ -368,7 +368,7 @@ class MainActivity : Activity() {
                 put("target_sdk", appInfo.targetSdkVersion)
                 put("debuggable", appInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0)
                 put("allow_backup", appInfo.flags and 0x00008000 != 0)
-                put("uses_cleartext_traffic", appInfo.usesCleartextTraffic)
+                put("uses_cleartext_traffic", appInfo.flags and 0x08000000 != 0)
                 put("security_patch", Build.VERSION.SECURITY_PATCH ?: "")
                 put("permissions", permissions)
             }
