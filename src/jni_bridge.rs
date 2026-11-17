@@ -17,7 +17,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreApiVersion
     _: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jint {
-    4
+    6
 }
 
 #[no_mangle]
@@ -25,7 +25,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreCapabiliti
     _: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jint {
-    63
+    255
 }
 
 #[no_mangle]
@@ -159,4 +159,31 @@ mod tests {
     fn api_v5() {
         assert_eq!(crate::mora_core_api_version(), 5);
     }
+}
+
+
+#[no_mangle]
+pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeEventLogOperation(
+    mut e: JNIEnv<'_>,
+    _: JClass<'_>,
+    log: JString<'_>,
+    operation: JString<'_>,
+    category: JString<'_>,
+    action: JString<'_>,
+    detail: JString<'_>,
+    time: jlong,
+) -> jstring {
+    let (Some(log), Some(operation), Some(category), Some(action), Some(detail)) = (
+        read(&mut e, &log),
+        read(&mut e, &operation),
+        read(&mut e, &category),
+        read(&mut e, &action),
+        read(&mut e, &detail),
+    ) else {
+        return ptr::null_mut();
+    };
+    let out = crate::event_logger::operate(&log, &operation, &category, &action, &detail, time);
+    e.new_string(out)
+        .map(|s| s.into_raw())
+        .unwrap_or(ptr::null_mut())
 }
