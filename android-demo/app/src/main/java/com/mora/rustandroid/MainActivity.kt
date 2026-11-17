@@ -44,7 +44,7 @@ class MainActivity : Activity() {
         column.addView(label("Mora Rust Android Core", 24f).apply {
             typeface = Typeface.DEFAULT_BOLD
         })
-        column.addView(label("Profile · Configuration · Runtime Manager · JNI API v5"))
+        column.addView(label("Profile · Configuration · Runtime Manager · Event Logger · JNI API v6"))
 
         section("Profile Manager")
         idInput = EditText(this).apply { hint = "Profile ID, contoh: daily_01" }
@@ -73,8 +73,7 @@ class MainActivity : Activity() {
             setText("diagnostics")
         }
         column.addView(serviceInput)
-        column.addView(button("Lihat Status Semua Service") { runRuntime("list")
-        recordEvent("system", "app_open", "Mora Rust Android Core dibuka") })
+        column.addView(button("Lihat Status Semua Service") { runRuntime("list") })
         column.addView(button("Start Service") { runRuntime("start") })
         column.addView(button("Stop Service") { runRuntime("stop") })
         column.addView(button("Enable Service") { runRuntime("enable") })
@@ -97,6 +96,7 @@ class MainActivity : Activity() {
         runProfile("list")
         runConfig("get")
         runRuntime("list")
+        recordEvent("system", "app_open", "Mora Rust Android Core dibuka")
     }
 
     private fun button(title: String, action: () -> Unit) =
@@ -182,6 +182,7 @@ class MainActivity : Activity() {
             recordEvent("profile", operation, "Operasi profile berhasil")
             output.text = "Profile berhasil: $operation\n$json"
         } catch (e: Exception) {
+            recordEvent("profile", "exception", e.javaClass.simpleName)
             output.text = "Profile error: " + (e.localizedMessage ?: e.javaClass.simpleName)
         }
     }
@@ -207,6 +208,7 @@ class MainActivity : Activity() {
             recordEvent("config", operation, "Operasi configuration berhasil")
             output.text = "System config berhasil: $operation\n$json"
         } catch (e: Exception) {
+            recordEvent("config", "exception", e.javaClass.simpleName)
             output.text = "Config error: " + (e.localizedMessage ?: e.javaClass.simpleName)
         }
     }
@@ -229,6 +231,7 @@ class MainActivity : Activity() {
             recordEvent("runtime", operation, "Service: " + serviceInput.text.toString().trim())
             output.text = "Runtime berhasil: $operation\\n$json\\nStatus logis service internal aplikasi."
         } catch (e: Exception) {
+            recordEvent("runtime", "exception", e.javaClass.simpleName)
             output.text = "Runtime error: " + (e.localizedMessage ?: e.javaClass.simpleName)
         }
     }
