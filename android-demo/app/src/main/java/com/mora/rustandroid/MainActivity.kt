@@ -53,7 +53,7 @@ class MainActivity : Activity() {
         column.addView(label("Mora Rust Android Core", 24f).apply {
             typeface = Typeface.DEFAULT_BOLD
         })
-        column.addView(label("Profile · Configuration · Runtime Manager · Event Logger · Network Monitor · Security Auditor · JNI API v8"))
+        column.addView(label("Profile · Configuration · Runtime Manager · Event Logger · Network Monitor · Security Auditor · Unified API v9"))
 
         section("Profile Manager")
         idInput = EditText(this).apply { hint = "Profile ID, contoh: daily_01" }
@@ -102,6 +102,11 @@ class MainActivity : Activity() {
         column.addView(label("Audit metadata dan permission aplikasi ini saja; tidak memindai aplikasi lain atau mengubah permission."))
         column.addView(button("Jalankan Security Audit") { runSecurityAudit() })
         column.addView(button("Lihat Audit Terakhir") { showSecurityAudit() })
+
+        section("Unified Core API")
+        column.addView(label("Satu dispatcher JSON untuk semua modul Rust; API lama tetap kompatibel."))
+        column.addView(button("Lihat Core API Descriptor") { showCoreApiDescriptor() })
+        column.addView(button("Tes Unified Core API") { runUnifiedCoreApiDemo() })
 
         section("Diagnostics")
         column.addView(Button(this).apply {
@@ -414,11 +419,47 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun showCoreApiDescriptor() {
+        try {
+            output.text = JSONObject(NativeCore.nativeCoreDescriptor()).toString(2)
+        } catch (e: Exception) {
+            output.text = "Core API descriptor error: " + (e.localizedMessage ?: e.javaClass.simpleName)
+        }
+    }
+
+    private fun runUnifiedCoreApiDemo() {
+        try {
+            val request = JSONObject().apply {
+                put("schema_version", 1)
+                put("request_id", "android-demo")
+                put("module", "profile_store")
+                put("operation", "create")
+                put("timestamp_ms", System.currentTimeMillis())
+                put("state_json", """{"profiles":[]}""")
+                put("params", JSONObject().put("id", "unified_demo").put("label", "Unified API"))
+            }
+            val response = JSONObject(NativeCore.nativeCoreDispatch(request.toString()))
+            if (!response.optBoolean("ok")) {
+                output.text = "Unified API gagal: " + response.optString("error")
+                return
+            }
+            val created = response.getJSONObject("data").getJSONObject("store")
+                .getJSONArray("profiles").getJSONObject(0)
+            output.text = "UNIFIED CORE API BERHASIL" +
+                "\nAPI: " + response.optInt("api_version") +
+                "\nRequest ID: " + response.optString("request_id") +
+                "\nModule: " + response.optString("module") +
+                "\nProfile: " + created.optString("label")
+        } catch (e: Exception) {
+            output.text = "Unified API error: " + (e.localizedMessage ?: e.javaClass.simpleName)
+        }
+    }
+
     private fun runTests() {
         try {
             val checks = mutableListOf(
-                NativeCore.nativeCoreApiVersion() == 8,
-                NativeCore.nativeCoreCapabilities() == 1023,
+                NativeCore.nativeCoreApiVersion() == 9,
+                NativeCore.nativeCoreCapabilities() == 2047,
                 NativeCore.nativeAdd(20, 22) == 42,
                 NativeCore.nativeNormalizeProfileLabel(" Daily ") == "Daily",
                 NativeCore.nativeNormalizeProfileLabel("  ") == null,
@@ -541,9 +582,30 @@ class MainActivity : Activity() {
             ))
             checks.add(riskyAudit.optBoolean("ok") &&
                 riskyAudit.getJSONObject("report").optInt("risk_score") == 80)
+            val descriptor = JSONObject(NativeCore.nativeCoreDescriptor())
+            checks.add(descriptor.optInt("api_version") == 9 &&
+                descriptor.getJSONObject("capabilities").optInt("mask") == 2047 &&
+                descriptor.getJSONArray("modules").length() == 6)
+            val unifiedRequest = JSONObject().apply {
+                put("schema_version", 1)
+                put("request_id", "smoke-test")
+                put("module", "profile_store")
+                put("operation", "create")
+                put("timestamp_ms", 10)
+                put("state_json", """{"profiles":[]}""")
+                put("params", JSONObject().put("id", "api_test").put("label", "API Test"))
+            }
+            val unifiedResponse = JSONObject(NativeCore.nativeCoreDispatch(unifiedRequest.toString()))
+            checks.add(unifiedResponse.optBoolean("ok") &&
+                unifiedResponse.optInt("api_version") == 9 &&
+                unifiedResponse.optString("request_id") == "smoke-test" &&
+                unifiedResponse.getJSONObject("data").getJSONObject("store")
+                    .getJSONArray("profiles").length() == 1)
+            val badUnifiedRequest = JSONObject(unifiedRequest.toString()).put("module", "unknown_module")
+            checks.add(!JSONObject(NativeCore.nativeCoreDispatch(badUnifiedRequest.toString())).optBoolean("ok"))
             val passed = checks.count { it }
             output.text = (if (passed == checks.size) "SEMUA TES BERHASIL" else "ADA TES GAGAL") +
-                "\nTes: $passed/${checks.size}\nAPI v8 · Capability 0x3ff"
+                "\nTes: $passed/${checks.size}\nAPI v9 · Capability 0x7ff"
         } catch (e: Exception) {
             output.text = "Tes gagal: " + (e.localizedMessage ?: e.javaClass.simpleName)
         }
