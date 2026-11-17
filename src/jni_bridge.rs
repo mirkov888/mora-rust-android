@@ -17,7 +17,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreApiVersion
     _: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jint {
-    6
+    7
 }
 
 #[no_mangle]
@@ -25,7 +25,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreCapabiliti
     _: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jint {
-    255
+    511
 }
 
 #[no_mangle]
@@ -179,10 +179,32 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeEventLogOperat
         .unwrap_or(ptr::null_mut())
 }
 
+#[no_mangle]
+pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeNetworkMonitorOperation(
+    mut e: JNIEnv<'_>,
+    _: JClass<'_>,
+    store: JString<'_>,
+    operation: JString<'_>,
+    snapshot: JString<'_>,
+    time: jlong,
+) -> jstring {
+    let (Some(store), Some(operation), Some(snapshot)) = (
+        read(&mut e, &store),
+        read(&mut e, &operation),
+        read(&mut e, &snapshot),
+    ) else {
+        return ptr::null_mut();
+    };
+    let out = crate::network_monitor::operate(&store, &operation, &snapshot, time);
+    e.new_string(out)
+        .map(|s| s.into_raw())
+        .unwrap_or(ptr::null_mut())
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
-    fn api_v6() {
-        assert_eq!(crate::mora_core_api_version(), 6);
+    fn api_v7() {
+        assert_eq!(crate::mora_core_api_version(), 7);
     }
 }
