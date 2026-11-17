@@ -17,7 +17,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreApiVersion
     _: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jint {
-    7
+    8
 }
 
 #[no_mangle]
@@ -25,7 +25,7 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeCoreCapabiliti
     _: JNIEnv<'_>,
     _: JClass<'_>,
 ) -> jint {
-    511
+    1023
 }
 
 #[no_mangle]
@@ -204,8 +204,8 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeNetworkMonitor
 #[cfg(test)]
 mod tests {
     #[test]
-    fn api_v7() {
-        assert_eq!(crate::mora_core_api_version(), 7);
+    fn api_v8() {
+        assert_eq!(crate::mora_core_api_version(), 8);
     }
 }
 
