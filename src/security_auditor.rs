@@ -43,25 +43,67 @@ struct AuditReport {
 
 fn dangerous_permission(name: &str) -> Option<(&'static str, &'static str, &'static str)> {
     match name {
-        "android.permission.CAMERA" => Some(("medium", "Camera access", "Only request camera access when the feature needs it.")),
-        "android.permission.RECORD_AUDIO" => Some(("medium", "Microphone access", "Only request microphone access when recording is actively used.")),
-        "android.permission.ACCESS_FINE_LOCATION" | "android.permission.ACCESS_COARSE_LOCATION" | "android.permission.ACCESS_BACKGROUND_LOCATION" =>
-            Some(("high", "Location access", "Prefer approximate or foreground-only location and explain its use.")),
-        "android.permission.READ_CONTACTS" | "android.permission.WRITE_CONTACTS" =>
-            Some(("high", "Contacts access", "Avoid broad contact access; use Android's contact picker where possible.")),
-        "android.permission.READ_CALL_LOG" | "android.permission.WRITE_CALL_LOG" | "android.permission.PROCESS_OUTGOING_CALLS" =>
-            Some(("high", "Call log access", "Remove call-log access unless it is essential and policy-compliant.")),
-        "android.permission.READ_SMS" | "android.permission.RECEIVE_SMS" | "android.permission.SEND_SMS" =>
-            Some(("high", "SMS access", "Remove SMS access unless it is essential and policy-compliant.")),
-        "android.permission.READ_PHONE_STATE" | "android.permission.CALL_PHONE" =>
-            Some(("medium", "Phone access", "Request only the minimum phone permission required by the feature.")),
-        "android.permission.READ_MEDIA_IMAGES" | "android.permission.READ_MEDIA_VIDEO" | "android.permission.READ_MEDIA_AUDIO" | "android.permission.READ_EXTERNAL_STORAGE" =>
-            Some(("medium", "Media access", "Prefer Android's Photo Picker or scoped media access.")),
+        "android.permission.CAMERA" => Some((
+            "medium",
+            "Camera access",
+            "Only request camera access when the feature needs it.",
+        )),
+        "android.permission.RECORD_AUDIO" => Some((
+            "medium",
+            "Microphone access",
+            "Only request microphone access when recording is actively used.",
+        )),
+        "android.permission.ACCESS_FINE_LOCATION"
+        | "android.permission.ACCESS_COARSE_LOCATION"
+        | "android.permission.ACCESS_BACKGROUND_LOCATION" => Some((
+            "high",
+            "Location access",
+            "Prefer approximate or foreground-only location and explain its use.",
+        )),
+        "android.permission.READ_CONTACTS" | "android.permission.WRITE_CONTACTS" => Some((
+            "high",
+            "Contacts access",
+            "Avoid broad contact access; use Android's contact picker where possible.",
+        )),
+        "android.permission.READ_CALL_LOG"
+        | "android.permission.WRITE_CALL_LOG"
+        | "android.permission.PROCESS_OUTGOING_CALLS" => Some((
+            "high",
+            "Call log access",
+            "Remove call-log access unless it is essential and policy-compliant.",
+        )),
+        "android.permission.READ_SMS"
+        | "android.permission.RECEIVE_SMS"
+        | "android.permission.SEND_SMS" => Some((
+            "high",
+            "SMS access",
+            "Remove SMS access unless it is essential and policy-compliant.",
+        )),
+        "android.permission.READ_PHONE_STATE" | "android.permission.CALL_PHONE" => Some((
+            "medium",
+            "Phone access",
+            "Request only the minimum phone permission required by the feature.",
+        )),
+        "android.permission.READ_MEDIA_IMAGES"
+        | "android.permission.READ_MEDIA_VIDEO"
+        | "android.permission.READ_MEDIA_AUDIO"
+        | "android.permission.READ_EXTERNAL_STORAGE" => Some((
+            "medium",
+            "Media access",
+            "Prefer Android's Photo Picker or scoped media access.",
+        )),
         _ => None,
     }
 }
 
-fn add(findings: &mut Vec<Finding>, id: &str, severity: &'static str, title: &str, detail: String, recommendation: &str) {
+fn add(
+    findings: &mut Vec<Finding>,
+    id: &str,
+    severity: &'static str,
+    title: &str,
+    detail: String,
+    recommendation: &str,
+) {
     findings.push(Finding {
         id: id.to_string(),
         severity,
@@ -74,8 +116,10 @@ fn add(findings: &mut Vec<Finding>, id: &str, severity: &'static str, title: &st
 /// Audits only metadata and permission states supplied by the owning Android app.
 pub fn audit(input_json: &str, now_ms: i64) -> String {
     let result = (|| -> Result<AuditReport, &'static str> {
-        let input: AuditInput = serde_json::from_str(input_json).map_err(|_| "invalid_audit_input")?;
-        if input.package_name.is_empty() || input.package_name.len() > 255
+        let input: AuditInput =
+            serde_json::from_str(input_json).map_err(|_| "invalid_audit_input")?;
+        if input.package_name.is_empty()
+            || input.package_name.len() > 255
             || input.package_name.bytes().any(|b| b.is_ascii_control())
             || input.security_patch.len() > 32
             || input.permissions.len() > 256
@@ -83,6 +127,7 @@ pub fn audit(input_json: &str, now_ms: i64) -> String {
         {
             return Err("invalid_audit_input");
         }
+
         let mut findings = Vec::new();
         let mut score = 0u32;
         let mut granted_dangerous_count = 0usize;
@@ -90,42 +135,78 @@ pub fn audit(input_json: &str, now_ms: i64) -> String {
 
         if input.debuggable {
             score += 35;
-            add(&mut findings, "debuggable_build", "high", "Debuggable application",
+            add(
+                &mut findings,
+                "debuggable_build",
+                "high",
+                "Debuggable application",
                 "The installed app is marked debuggable.".into(),
-                "Use a non-debuggable release build for production.");
+                "Use a non-debuggable release build for production.",
+            );
         }
         if input.allow_backup {
             score += 10;
-            add(&mut findings, "backup_enabled", "low", "Application backup enabled",
+            add(
+                &mut findings,
+                "backup_enabled",
+                "low",
+                "Application backup enabled",
                 "Android backup is enabled for this application.".into(),
-                "Review backup rules and exclude sensitive app data.");
+                "Review backup rules and exclude sensitive app data.",
+            );
         }
         if input.uses_cleartext_traffic {
             score += 25;
-            add(&mut findings, "cleartext_traffic", "high", "Cleartext network traffic allowed",
+            add(
+                &mut findings,
+                "cleartext_traffic",
+                "high",
+                "Cleartext network traffic allowed",
                 "The app manifest allows unencrypted HTTP traffic.".into(),
-                "Disable cleartext traffic and use HTTPS.");
+                "Disable cleartext traffic and use HTTPS.",
+            );
         }
         if input.target_sdk < 29 {
             score += 20;
-            add(&mut findings, "old_target_sdk", "medium", "Outdated target SDK",
+            add(
+                &mut findings,
+                "old_target_sdk",
+                "medium",
+                "Outdated target SDK",
                 format!("The app targets SDK {}.", input.target_sdk),
-                "Raise targetSdkVersion and test modern Android behavior.");
+                "Raise targetSdkVersion and test modern Android behavior.",
+            );
         }
 
         for permission in &input.permissions {
-            if permission.name.len() > 255 || permission.name.bytes().any(|b| b.is_ascii_control()) {
+            if permission.name.len() > 255
+                || permission.name.bytes().any(|b| b.is_ascii_control())
+            {
                 return Err("invalid_permission_name");
             }
-            if let Some((severity, title, recommendation)) = dangerous_permission(&permission.name) {
+            if let Some((severity, title, recommendation)) =
+                dangerous_permission(&permission.name)
+            {
                 if permission.granted {
                     granted_dangerous_count += 1;
                     let weight = if severity == "high" { 12 } else { 7 };
                     score += weight;
-                    add(&mut findings, &format!("granted_{}", permission.name.rsplit('.').next().unwrap_or("permission").to_lowercase()),
-                        severity, title,
+                    add(
+                        &mut findings,
+                        &format!(
+                            "granted_{}",
+                            permission
+                                .name
+                                .rsplit('.')
+                                .next()
+                                .unwrap_or("permission")
+                                .to_lowercase()
+                        ),
+                        severity,
+                        title,
                         format!("{} is currently granted to this app.", permission.name),
-                        recommendation);
+                        recommendation,
+                    );
                 } else {
                     denied_dangerous_count += 1;
                 }
@@ -133,7 +214,15 @@ pub fn audit(input_json: &str, now_ms: i64) -> String {
         }
 
         score = score.min(100);
-        let risk_level = if score >= 60 { "high" } else if score >= 25 { "medium" } else if score > 0 { "low" } else { "good" };
+        let risk_level = if score >= 60 {
+            "high"
+        } else if score >= 25 {
+            "medium"
+        } else if score > 0 {
+            "low"
+        } else {
+            "good"
+        };
         Ok(AuditReport {
             schema_version: 1,
             package_name: input.package_name,
@@ -159,7 +248,9 @@ mod tests {
     use super::*;
 
     fn input(extra: &str) -> String {
-        format!(r#"{{"package_name":"com.example.app","target_sdk":35,"debuggable":false,"allow_backup":false,"uses_cleartext_traffic":false,"security_patch":"2026-10-01","permissions":[] {extra}}}"#)
+        format!(
+            r#"{{"package_name":"com.example.app","target_sdk":35,"debuggable":false,"allow_backup":false,"uses_cleartext_traffic":false,"security_patch":"2026-10-01","permissions":[] {extra}}}"#
+        )
     }
 
     #[test]
@@ -207,8 +298,14 @@ mod tests {
 
     #[test]
     fn rejects_too_many_permissions() {
-        let permissions = (0..257).map(|_| r#"{"name":"android.permission.CAMERA","granted":false}"#).collect::<Vec<_>>().join(",");
-        let raw = format!(r#"{{"package_name":"com.example.app","target_sdk":35,"debuggable":false,"allow_backup":false,"uses_cleartext_traffic":false,"security_patch":"","permissions":[{}]}}"#, permissions);
+        let permissions = (0..257)
+            .map(|_| r#"{"name":"android.permission.CAMERA","granted":false}"#)
+            .collect::<Vec<_>>()
+            .join(",");
+        let raw = format!(
+            r#"{{"package_name":"com.example.app","target_sdk":35,"debuggable":false,"allow_backup":false,"uses_cleartext_traffic":false,"security_patch":"","permissions":[{}]}}"#,
+            permissions
+        );
         let out: serde_json::Value = serde_json::from_str(&audit(&raw, 10)).unwrap();
         assert_eq!(out["ok"], false);
     }
