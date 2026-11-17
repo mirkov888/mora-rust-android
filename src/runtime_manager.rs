@@ -38,8 +38,7 @@ fn parse(input: &str) -> Result<RuntimeStore, &'static str> {
     if input.trim().is_empty() {
         return Ok(RuntimeStore::default());
     }
-    let store: RuntimeStore =
-        serde_json::from_str(input).map_err(|_| "invalid_runtime_json")?;
+    let store: RuntimeStore = serde_json::from_str(input).map_err(|_| "invalid_runtime_json")?;
     if store.schema_version != 1 {
         return Err("unsupported_schema_version");
     }
