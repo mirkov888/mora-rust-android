@@ -201,13 +201,6 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeNetworkMonitor
         .unwrap_or(ptr::null_mut())
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn api_v8() {
-        assert_eq!(crate::mora_core_api_version(), 8);
-    }
-}
 
 #[no_mangle]
 pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeSecurityAudit(
@@ -223,4 +216,12 @@ pub extern "system" fn Java_com_mora_rustandroid_NativeCore_nativeSecurityAudit(
     e.new_string(out)
         .map(|s| s.into_raw())
         .unwrap_or(ptr::null_mut())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn api_v8() {
+        assert_eq!(crate::mora_core_api_version(), 8);
+    }
 }
